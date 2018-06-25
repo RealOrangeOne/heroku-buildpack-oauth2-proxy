@@ -5,12 +5,10 @@ set -e
 BP_DIR="$(cd "$(dirname "$0")" && pwd)"
 BUILD_DIR=$1
 CACHE_DIR=$2
-OPT_DIR=$BP_DIR/../opt/
-PROFILED_DIR=$BUILD_DIR/.profile.d
 
-GOHOME=$BUILD_DIR/.gohome
+GOHOME=$CACHE_DIR/.gohome
 export GOROOT=$GOHOME/go
-export GOPATH=$BUILD_DIR/go
+export GOPATH=$CACHE_DIR/go
 export PATH=$GOPATH/bin:$GOROOT/bin:$PATH
 
 mkdir -p $GOROOT/bin
@@ -19,8 +17,6 @@ cd $GOHOME
 echo "downloading golang..."
 curl -O  https://storage.googleapis.com/golang/go1.8.3.linux-amd64.tar.gz
 tar -xvf go1.8.3.linux-amd64.tar.gz
-
-mkdir -p $PROFILED_DIR
 
 # write out a start script
 cat <<EOF > ${BUILD_DIR}/start-oauth2-proxy.sh
@@ -48,29 +44,7 @@ oauth2_proxy  \
 --upstream=https://127.0.0.1:8080 &
 EOF
 
-# put this under .profile.d so that the dyno gets it at runtime
-cat <<EOF > ${PROFILED_DIR}/golang.sh
-#!/bin/bash
-set -e
-export GOHOME=/app/.gohome
-export GOROOT=/app/.gohome/go
-export GOPATH=/app/go
-export PATH=/app/go/bin:/app/.gohome/go/bin:$PATH
-EOF
-
-# for future buildpacks during slug compilation
-cat <<EOF > ${BP_DIR}/export
-#!/bin/bash
-set -e
-export GOHOME=$GOHOME
-export GOROOT=$GOROOT
-export GOPATH=$BUILD_DIR/go
-export PATH=$GOPATH/bin:$GOROOT/bin:$PATH
-EOF
-
 chmod +x ${BUILD_DIR}/start-oauth2-proxy.sh
-chmod +x ${PROFILED_DIR}/golang.sh
-chmod +x ${BP_DIR}/export
 
 echo "-----> Installed GoLang1.8.3"
 
@@ -81,3 +55,5 @@ echo "grabbing oauth2_proxy..."
 go get github.com/pallavkothari/oauth2_proxy
 
 echo "got it"
+
+cp $GOROOT/bin/oauth2_proxy $BUILD_DIR
